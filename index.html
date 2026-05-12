@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Gemini and OpenAI chatbot static HTML CSS JS" />
+    <title>AI Markdown Chatbot</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="stylesheet" href="styles.css" />
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [["$", "$"], ["\\(", "\\)"]],
+          displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+          processEscapes: true
+        },
+        svg: {
+          fontCache: "global"
+        },
+        startup: {
+          typeset: false
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.3/dist/purify.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Cài đặt">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">AI</div>
+          <div>
+            <h1>AI Study</h1>
+            <p>Markdown multimodal</p>
+          </div>
+        </div>
+
+        <section class="panel mode-panel">
+          <div class="mode-line">
+            <i data-lucide="graduation-cap"></i>
+            <div>
+              <strong>Thị giác máy tính</strong>
+              <span>Tự kiểm tra 3 lượt rồi chốt đáp án</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel model-panel" aria-labelledby="modelTitle">
+          <div class="model-heading">
+            <i data-lucide="cpu"></i>
+            <h2 id="modelTitle">Model hệ thống</h2>
+          </div>
+          <label for="providerSelect">Nhà cung cấp</label>
+          <select id="providerSelect">
+            <option value="gemini">Gemini</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          <label for="modelSelect">Model</label>
+          <select id="modelSelect"></select>
+          <div id="openaiKeyField" class="api-key-field" hidden>
+            <label for="openaiApiKeyInput">OpenAI API key</label>
+            <div class="field-row">
+              <input id="openaiApiKeyInput" type="password" autocomplete="off" placeholder="sk-..." />
+              <button id="toggleOpenaiKeyButton" type="button" class="icon-button" aria-label="Hiện hoặc ẩn OpenAI API key" title="Hiện/ẩn key">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="button-grid">
+            <button id="clearChatButton" type="button" class="secondary-button">
+              <i data-lucide="message-square-x"></i>
+              <span>Xóa chat</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel quota-panel" aria-labelledby="quotaTitle">
+          <div class="quota-heading">
+            <div>
+              <h2 id="quotaTitle">Giới hạn Gemini Free</h2>
+              <p id="quotaModelText">gemini-2.5-flash</p>
+            </div>
+            <button id="resetQuotaButton" type="button" class="icon-button tiny" aria-label="Đặt lại bộ đếm quota" title="Đặt lại bộ đếm quota">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+          </div>
+          <div id="quotaMeters" class="quota-meters"></div>
+          <div class="quota-foot">
+            <span id="quotaSummary">Đang tính từ trình duyệt này.</span>
+            <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noreferrer">Nguồn</a>
+          </div>
+        </section>
+
+        <p class="security-note">Gemini giữ cấu hình sẵn. OpenAI yêu cầu nhập key riêng khi dùng: sk-proj-CXubjW2pzfZ0D4QakqKS90e5VQShWzLFhdGQfx1cKmwklO4IR_87Gm3rDtmAhxv3rNffUp8LBmT3BlbkFJVNl4fsLbI9fP-Fh6I0hvvxrFSXZhPAQpVQCCv3qYNrHWUkE0v02MJqFRdd9p5RmufpsVbWhss(+1 ký tự viết HOA). Tối đa 100MB file mỗi lượt.</p>
+      </aside>
+
+      <main class="chat-area">
+        <header class="topbar">
+          <div>
+            <h2>Trợ lý giải bài</h2>
+            <p id="statusText" role="status">Sẵn sàng</p>
+          </div>
+          <button id="stopButton" type="button" class="secondary-button compact" disabled>
+            <i data-lucide="square"></i>
+            <span>Dừng</span>
+          </button>
+        </header>
+
+        <section id="messages" class="messages" aria-live="polite">
+          <div class="empty-state">
+            <i data-lucide="sparkles"></i>
+            <p>Gửi ảnh/PDF/text bài Thị giác máy tính để bắt đầu.</p>
+          </div>
+        </section>
+
+        <form id="chatForm" class="composer">
+          <input
+            id="fileInput"
+            type="file"
+            accept="image/*,application/pdf,text/plain,text/markdown,.txt,.md,.csv,.json"
+            multiple
+            hidden
+          />
+          <div id="attachmentsList" class="attachments" aria-label="Tệp đính kèm"></div>
+          <div class="composer-row">
+            <button id="attachButton" class="icon-button attach" type="button" aria-label="Đính kèm file" title="Đính kèm file">
+              <i data-lucide="paperclip"></i>
+            </button>
+            <textarea
+              id="promptInput"
+              rows="1"
+              placeholder="Gửi đề bài, ảnh hoặc PDF..."
+              autocomplete="off"
+            ></textarea>
+            <button id="sendButton" class="send-button" type="submit" aria-label="Gửi">
+              <i data-lucide="send-horizontal"></i>
+              <span>Gửi</span>
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+  </body>
+</html>
